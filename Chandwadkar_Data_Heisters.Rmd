@@ -1,0 +1,276 @@
+---
+title: "Project Major Safety Events"
+group: Data Heisters
+output: html_document
+---
+
+```{r}
+require(tidyverse)
+require(ggplot2)
+library(dplyr)
+library(ggplot2)
+```
+```{r}
+Major_Events = read_csv('/Users/chandwadkar/Downloads/Major_Events_Final.csv')
+
+Major_Events
+```
+## DATA CLEANING
+```{r}
+# Data Cleaning
+# Replace all space with _ in Variable names
+names(Major_Events) = str_replace_all(names(Major_Events), " ", "_")
+
+# Replaced empty values with NA
+is.na(Major_Events) = Major_Events == NULL
+
+Major_Events
+```
+
+## DESCRIPTIVE STATISTICS
+```{r}
+#Injuries
+
+mean(Major_Events$Total_Injuries)
+median(Major_Events$Total_Injuries)
+IQR(Major_Events$Total_Injuries)
+min(Major_Events$Total_Injuries)
+max(Major_Events$Total_Injuries)
+range(Major_Events$Total_Injuries)
+```
+
+
+```{r}
+#Fatalities
+
+mean(Major_Events$Total_Fatalities)
+median(Major_Events$Total_Fatalities)
+IQR(Major_Events$Total_Fatalities)
+min(Major_Events$Total_Fatalities)
+max(Major_Events$Total_Fatalities)
+range(Major_Events$Total_Fatalities)
+```
+
+
+```{r}
+#Property Damage
+
+mean(Major_Events$Property_Damage,na.rm = TRUE)
+median(Major_Events$Property_Damage,na.rm = TRUE)
+
+min(Major_Events$Property_Damage,na.rm = TRUE)
+max(Major_Events$Property_Damage,na.rm = TRUE)
+range(Major_Events$Property_Damage,na.rm = TRUE)
+
+quantile(Major_Events$Property_Damage,na.rm = TRUE)
+
+sd(Major_Events$Property_Damage,na.rm = TRUE)
+var(Major_Events$Property_Damage,na.rm = TRUE)
+
+skewness <- (3*(mean(Major_Events$Property_Damage,na.rm = TRUE) - median(Major_Events$Property_Damage,na.rm = TRUE)))/sd(Major_Events$Property_Damage,na.rm = TRUE)
+skewness
+```
+
+## EXPLORATORY ANALYSIS AND VISUALIZATION
+```{r}
+# On what basis are we analyzing the data?
+ggplot(Major_Events, aes(`Safety/Security`, fill = "`Safety/Security`")) +
+  geom_bar() +
+  labs(title = "Different Safety & Security Incidents", x = "Safety and Security", y = "No of Incidents") + 
+  scale_fill_discrete(guide = FALSE)
+```
+```{r}
+# Trend of Security over the years (2014-2019)
+Sec_Events = Major_Events %>%
+  filter(`Safety/Security` == "SEC") 
+
+Sec_Events_Count_Year = Sec_Events %>%
+  filter(Year < 2020) %>%
+  group_by(Year) %>%
+  summarise(count = n())
+
+Sec_Events_Count_Year
+
+Sec_Events_Trend = ggplot(Sec_Events_Count_Year , aes(x = Year, y = count)) + 
+  geom_line(aes(group=3), colour="#000099") +
+  geom_point(size=3, colour="#CC0000") +
+  labs(x= "Year", y="Number of incidents", title="Number of Security Incidents 2014-2019") 
+
+Sec_Events_Trend
+```
+```{r}
+# Trend of Safety over the years (2014-2019)
+Sft_Events = Major_Events %>%
+  filter(`Safety/Security` == "SFT") 
+
+Sft_Events_Count_Year = Sft_Events %>%
+  filter(Year < 2020) %>%
+  group_by(Year) %>%
+  summarise(count = n())
+
+Sft_Events_Count_Year
+
+Sft_Events_Trend = ggplot(Sft_Events_Count_Year, aes(x = Year, y = count)) + 
+  geom_line(aes(group=3), colour="#000099") +
+  geom_point(size=3, colour="#CC0000") +
+  labs(x= "Year", y="Number of incidents", title="Number of Safety Incidents 2014-2019") +
+  scale_x_discrete(limits = c(2014,2015, 2016, 2017, 2018, 2019)) 
+
+Sft_Events_Trend
+```
+```{r}
+# Which type of Security events are the highest contributors?
+
+# Clubbed incidents with small count into 'Other'
+Sec_Event_Count = Major_Events %>%
+  filter(`Safety/Security` == "SEC") %>%
+  mutate(Event_Type2 = fct_other(Event_Type, keep = c("Assault", "Robbery", "Suicide"))) %>%
+  group_by(Event_Type2) %>%
+  count(Event_Type2) 
+
+Sec_Event_Count
+
+Sec_Event_Type = ggplot(data = Sec_Event_Count, mapping = aes(x = reorder(Event_Type2,-n), y= n,  fill = Event_Type2)) + geom_bar(stat = "identity") + labs(y= "Number of Incidents", x = "Event Type") + ggtitle("Major Events in Security") +
+  scale_fill_discrete(guide = FALSE)
+
+Sec_Event_Type
+```
+```{r}
+# Which type of Safety events are the highest contributors?
+
+Sft_Event_Count = Major_Events %>%
+  filter(`Safety/Security` == "SFT") %>%
+  mutate(Event_Type2 = fct_other(Event_Type, keep = c("Non-Rail Collision", "Rail Collision", "Non_Rail Fire"))) %>%
+  group_by(Event_Type2) %>%
+  count(Event_Type2)
+Sft_Event_Count
+
+Sft_Event_Type = ggplot(data = Sft_Event_Count, mapping = aes(x = reorder(Event_Type2,-n), y= n,  fill = Event_Type2)) + geom_bar(stat = "identity") + labs(y= "Number of Incidents", x = "Event Type") + ggtitle("Major Events in Safety") +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) +
+  guides(fill=guide_legend(title="Event Type"))
+
+Sft_Event_Type
+```
+```{r}
+# In lieu of the events, how do the reported fatalities co-relate over the years?
+
+Total_Fatalities = Major_Events %>%
+  filter(Event_Type %in% c("Non-Rail Collision", "Rail Collision"), Year <2021)%>%
+  group_by(Year, Event_Type) %>%
+  summarise(Fatalities = sum(Total_Fatalities))
+
+Total_Fatalities 
+
+ggplot(Total_Fatalities, aes(Year, Fatalities, fill = Event_Type)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(title = "Total Fatalities from Rail and Non-Rail Collisions(2014-2020)", x = "Year", y = "Number of Fatalities") +
+  scale_x_discrete(limits = c(2014,2015, 2016, 2017, 2018, 2019, 2020)) +
+  scale_fill_discrete(name = "Event Type") +
+  scale_fill_brewer(palette="BuGn")
+```
+```{r}
+# Reason for high fatalities
+Fatalities_vs_Weather = Major_Events %>%
+  filter(Year == 2019, Event_Type == "Rail Collision") %>%
+  group_by(Agency, Weather) %>%
+  summarise(F = sum(Total_Fatalities)) %>%
+  arrange(desc(F)) %>%
+  head(10)
+
+Fatalities_vs_Weather
+
+Fatalities_Plot = ggplot(Fatalities_vs_Weather, aes(x = reorder(Agency, F), y = F, fill = Weather)) + 
+         geom_bar(stat = "identity") +
+  labs(title ="Top 10 agencies with high Fatalities\n from Rail collision in 2019", x = "Agency", y = "Total Fatalities") +
+  coord_flip()
+Fatalities_Plot
+```
+```{r}
+NYC_Fatalities= Major_Events %>%
+  filter(Agency == "MTA New York City Transit", Event_Type == "Rail Collision", Year < 2021) %>%
+  group_by(Year, Weather) %>%
+  summarise(F = sum(Total_Fatalities)) %>%
+  arrange(desc(F)) %>%
+  head(10)
+
+NYC_Fatalities
+
+NYC_Fatalities_Plot = ggplot(NYC_Fatalities, aes(x = Year, y = F, fill = Weather)) + 
+         geom_bar(stat = "identity") +
+  labs(title ="Fatalities caused by Rail collision under MTA NYC Transit from 2014-2020", x = "Year", y = "Total Fatalities") +
+  scale_x_discrete(limits = c(2014,2015, 2016, 2017, 2018, 2019, 2020))
+NYC_Fatalities_Plot
+```
+
+```{r}
+# In lieu of the events, how do the reported injuries co-relate over the years?
+
+Total_Injuries = Major_Events %>%
+  filter(Event_Type %in% c("Non-Rail Collision", "Rail Collision"), Year <2021)%>%
+  group_by(Year, Event_Type) %>%
+  summarise(Injuries = sum(Total_Injuries))
+
+Total_Injuries
+
+Injuries_plot = ggplot(Total_Injuries, aes(Year, Injuries, fill = Event_Type)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(title = "Total Injuries from Rail and Non-Rail Collisions(2014-2020)", x = "Year", y = "Number of Injuries") +
+  scale_x_discrete(limits = c(2014,2015, 2016, 2017, 2018, 2019, 2020)) +
+  scale_fill_brewer(palette="BuGn") 
+
+Injuries_plot
+```
+
+```{r}
+# What is the supporting parameter that tells us if Non-Rail/Rail collision needs attention?
+
+Collision_Events = Major_Events %>%
+                  filter(Event_Type=='Non-Rail Collision'|Event_Type=='Rail Collision') 
+
+Collision_Events
+Collision_vs_Damage = ggplot(Collision_Events,aes(x=Event_Type,y=Property_Damage,fill=Event_Type)) + geom_col() 
+Collision_vs_Damage
+```
+
+```{r}
+# Analysing Non-Rail Collision
+
+Collision_With = Major_Events %>%
+  filter(Event_Type == "Non-Rail Collision") %>% 
+  mutate(Collision_With2 = fct_other(Collision_With, keep = c("Motor Vehicle", "Person"))) %>%
+  group_by(Collision_With2) %>%
+  summarise(count = n())
+
+Collision_With
+
+Collision_with_plot = ggplot(Collision_With, aes(Collision_With2, count, fill = Collision_With2)) + geom_bar(stat = "identity") +
+  labs(title = "Analyzing Non-Rail Collision", x = "Collision With", y = "Number of Non-Rail Collisions") +
+  scale_fill_brewer(palette="Set2") +
+  guides(fill=guide_legend(title="Collision With"))
+
+Collision_with_plot
+```
+
+
+```{r}
+# Top 10 Agencies with highest losses due to property damage by non-rail collision
+
+Damage_By_Agency = Major_Events %>%
+  filter(Event_Type == "Non-Rail Collision", Year <2020)%>%
+  group_by(Agency) %>%
+  summarise(Damage = sum(Property_Damage))
+
+
+Main_Agencies = Damage_By_Agency %>%
+              arrange(desc(Damage)) %>%
+                    head(10)
+
+Main_Agencies
+
+Main_Agencies_Plot = ggplot(Main_Agencies,aes(x= reorder(Agency, Damage), y=Damage,fill=Agency)) + geom_col() + scale_x_discrete(label=abbreviate) + labs(x= "Agencies", y="Property Damage",title="Top 10 agencies with highest Property Damage") +
+  coord_flip()
+
+Main_Agencies_Plot
+```
+
+
